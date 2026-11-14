@@ -71,13 +71,22 @@ class SellerBridge:
             pay_from_chain_id=pay_from_chain_id, buyer_id=buyer_id)
 
     def release_due(self, store: InvoiceStore) -> list[dict]:
-        """Release delivery for every invoice that is final-paid and not
-        yet released. Only success releases. Exactly once per invoice."""
+        """Release delivery for this seller's final-paid invoices."""
+        return self._release(store, seller_id=self.profile.seller_id)
+
+    @staticmethod
+    def release_all_due(store: InvoiceStore) -> list[dict]:
+        """Server-side pass: release delivery for every seller's
+        final-paid invoices. Only success releases, exactly once each."""
+        return SellerBridge._release(store, seller_id=None)
+
+    @staticmethod
+    def _release(store: InvoiceStore, seller_id: str | None) -> list[dict]:
         released = []
         outbox = Path(store.dir) / DELIVERIES_NAME
         for invoice_id in store.list_ids():
             invoice = store.get(invoice_id)
-            if invoice.seller_id != self.profile.seller_id:
+            if seller_id is not None and invoice.seller_id != seller_id:
                 continue
             if invoice.status != "success" or invoice.delivery_released:
                 continue

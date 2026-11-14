@@ -32,6 +32,12 @@ The settlement service itself, in Python (standard library only):
     payer warnings (wrong token, one-time address, blocked platforms).
 
 - `clearo/invoices.py` is the invoice engine described above.
+- `examples/seller_quickstart.py` is the seller integration as one
+  copyable file (plain HTTP, no Clearo internals), and `SELLER_GUIDE.md`
+  is the seller-facing guide. Sellers run both themselves.
+- `POST /invoices` on the HTTP surface lets a plugged-in seller create an
+  invoice over HTTP, authenticated per seller with `CLEARO_SELLER_TOKENS`
+  (a JSON map of seller id to token, sent as the `X-Clearo-Token` header).
 - `python -m clearo.service watch` polls Relay once for every open invoice
   and applies any status change. `python -m clearo.service serve --port 8080`
   runs the HTTP surface: `POST /webhooks/relay` for Relay webhooks,
