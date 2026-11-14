@@ -54,8 +54,26 @@ def extract_actual_app_fee(record) -> Decimal | None:
         return None
     if not isinstance(record, dict):
         return None
-    node = record.get("data", record)
-    fees = (node or {}).get("fees") or {}
+    node = record.get("data", record) or {}
+    # Current /requests/v3 shape: the settled record carries the fee in
+    # data.appFees.actual (a list per recipient) and mirrors it at
+    # data.fees.actual.app. The quoted figure sits under "quoted" beside
+    # it, so verification must read the "actual" branch specifically.
+    app_fees = node.get("appFees") or {}
+    actual_list = app_fees.get("actual")
+    if isinstance(actual_list, list):
+        for entry in actual_list:
+            if isinstance(entry, dict) and entry.get("amountFormatted") is not None:
+                return _dec(entry["amountFormatted"])
+    fees = node.get("fees") or {}
+    actual_fees = fees.get("actual") or {}
+    app = actual_fees.get("app")
+    if isinstance(app, dict):
+        for key in ("amountFormatted", "amount", "actual", "value"):
+            if app.get(key) is not None:
+                return _dec(app[key])
+    if isinstance(app, (str, int, float)):
+        return _dec(app)
     app = fees.get("app")
     if isinstance(app, dict):
         for key in ("amountFormatted", "amount", "actual", "value"):
@@ -84,6 +102,17 @@ def verify_invoice_fee(client: RelayClient, store: InvoiceStore,
         record = client.get_request_record(invoice.relay_request_id) if invoice.relay_request_id else None
     except RelayError:
         record = None
+    # /requests/v3 can answer with a list of requests. Only the entry
+    # whose id is this invoice's request id is this invoice's record;
+    # a list of other requests means Relay has no record for us yet.
+    if isinstance(record, dict) and isinstance(record.get("requests"), list):
+        entries = record["requests"]
+        matched = [e for e in entries if isinstance(e, dict)
+                   and e.get("id") == invoice.relay_request_id]
+        if matched:
+            record = matched[0]
+        elif any(isinstance(e, dict) and e.get("id") for e in entries):
+            record = None
     actual = extract_actual_app_fee(record)
     if actual is None:
         outcome = "unavailable"
