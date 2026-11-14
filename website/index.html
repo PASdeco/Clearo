@@ -604,7 +604,7 @@ footer{background:var(--paper);border-top:1px solid var(--line);padding:52px 0 4
     if(isNaN(v)||v<0){ feeOut.textContent='—'; netOut.textContent='—'; return; }
     var fee=v*0.0025;
     feeOut.textContent=fmt(fee); netOut.textContent=fmt(v-fee);
-    if(v>0&&v<12){ note.textContent='Note: 12 USDC is the minimum invoice amount on Clearo. Amounts below that cannot be issued as an invoice.'; }
+    if(v>0&&v<1){ note.textContent='Note: on amounts under $1, Relay network costs take a large share of the payment, and a fee under $0.025 may not collect.'; }
     else{ note.textContent=defaultNote; }
   }
   input.addEventListener('input',calc); calc();

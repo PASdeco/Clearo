@@ -10,7 +10,7 @@ Website: https://clearo.pxxlspace.cv
 
 - Non-custodial: Clearo never holds buyer or seller funds.
 - Fee: 0.25% per settlement, shown on the invoice before payment.
-- Minimum invoice: 12 USDC.
+- No minimum invoice amount.
 - Launch settlement: USDC on Base and BNB Chain.
 - One invoice uses one deposit address. A refund address is required before payment.
 
