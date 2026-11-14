@@ -1,0 +1,36 @@
+# Render blueprint for the Clearo settlement service.
+#
+# In the Render dashboard choose New + then Blueprint, pick this repo,
+# and Render creates the service from this file. Secrets are marked
+# sync: false: Render asks for their values in the dashboard and they
+# are never stored in this repository.
+services:
+  - type: web
+    name: clearo
+    runtime: python
+    plan: free
+    rootDir: integration
+    buildCommand: pip install .
+    startCommand: clearo serve --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      # The Relay API key for the Clearo app. Server-side only.
+      - key: RELAY_API_KEY
+        sync: false
+      # Webhook signing keys, comma separated during key rotation.
+      # When unset, RELAY_API_KEY is used for verification.
+      - key: RELAY_WEBHOOK_KEYS
+        sync: false
+      - key: CLEARO_FEE_BPS
+        value: 25
+      - key: CLEARO_FEE_RECIPIENT
+        value: 0x7C812eD7bc555289302F23974F6d1FB69BcAaa05
+      - key: CLEARO_RECOVERY_ADDRESS
+        value: 0x7C812eD7bc555289302F23974F6d1FB69BcAaa05
+      - key: CLEARO_DATA_DIR
+        value: data
+      # JSON map of seller id to access token for POST /invoices.
+      - key: CLEARO_SELLER_TOKENS
+        sync: false

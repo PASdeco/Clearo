@@ -114,3 +114,24 @@ Rules that apply to every integration:
 - Invoices always set a buyer refund address and a recovery address before
   payment instructions are issued.
 - Only a final `success` status from Relay counts as settled.
+
+## Deployment
+
+The service deploys from the `render.yaml` blueprint at the repository
+root (Render, Python runtime, root directory `integration`). The start
+command is `clearo serve --port $PORT`; the health check is
+`GET /health`. Configuration is environment only:
+
+- `RELAY_API_KEY` (secret): the Relay app key, used for quotes, status
+  and request records, and as the webhook signing key fallback.
+- `RELAY_WEBHOOK_KEYS` (secret, optional): comma separated signing keys
+  during Relay key rotation.
+- `CLEARO_FEE_BPS`, `CLEARO_FEE_RECIPIENT`, `CLEARO_RECOVERY_ADDRESS`:
+  the app fee and the addresses it settles to.
+- `CLEARO_DATA_DIR`: the invoice store and settlement ledger directory.
+- `CLEARO_SELLER_TOKENS` (secret, optional): JSON map of seller id to
+  access token for the self-serve `POST /invoices` surface.
+
+After deployment, register the public webhook endpoint
+(`https://<service-host>/webhooks/relay`) in the Relay app settings so
+settlement events arrive as signed webhooks; polling remains the backup.
