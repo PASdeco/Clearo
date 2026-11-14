@@ -68,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     show_p = inv_sub.add_parser("show", help="show an invoice's payment instructions")
     show_p.add_argument("--id", required=True)
     watch_p = sub.add_parser("watch", help="poll Relay once for every open invoice")
+    verify_p = sub.add_parser("verify", help="verify one final invoice's fee on /requests/v3")
+    verify_p.add_argument("--id", required=True)
+    sub.add_parser("reconcile", help="verify every final invoice and total the accrual book")
     sub.add_parser("serve", help="run the webhook and status HTTP server").add_argument(
         "--port", type=int, default=8080)
     args = parser.parse_args(argv)
@@ -85,6 +88,19 @@ def main(argv: list[str] | None = None) -> int:
         from .invoices import InvoiceStore
         from .server import serve
         serve(InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data")), args.port)
+        return 0
+    if args.command == "verify":
+        from .invoices import InvoiceStore
+        from .verification import verify_invoice_fee
+        store = InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data"))
+        result = verify_invoice_fee(client, store, store.get(args.id))
+        print(json.dumps(result.as_dict(), indent=2))
+        return 0 if result.outcome in ("match", "not_collected") else 1
+    if args.command == "reconcile":
+        from .invoices import InvoiceStore
+        from .verification import reconcile
+        summary = reconcile(client, InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data")))
+        print(json.dumps(summary, indent=2))
         return 0
     if args.command == "watch":
         from .invoices import InvoiceStore

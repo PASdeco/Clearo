@@ -81,5 +81,8 @@ def apply_event(store: InvoiceStore, event: dict) -> dict:
         invoice.deposit_tx_hash = tx_hash
     invoice.history.append({"from": previous, "to": new_status, "source": "webhook"})
     store.save(invoice)
+    from .ledger import append_event
+    append_event(store.dir, "status_change", invoice_id=invoice.invoice_id,
+                 **{"from": previous, "to": new_status, "source": "webhook"})
     return {"matched": True, "invoice_id": invoice.invoice_id,
             "status": invoice.status, "changed": True}

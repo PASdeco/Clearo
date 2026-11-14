@@ -58,6 +58,10 @@ class RelayClient:
     def get_chains(self) -> list:
         return self._call("GET", "/chains").get("chains", [])
 
+    def get_request_record(self, request_id: str) -> dict:
+        """The verification record for one request: GET /requests/v3."""
+        return self._call("GET", f"/requests/v3?requestId={request_id}")
+
     def get_intent_status(self, request_id: str) -> dict:
         """Current status of one request: GET /intents/status/v3."""
         return self._call("GET", f"/intents/status/v3?requestId={request_id}")

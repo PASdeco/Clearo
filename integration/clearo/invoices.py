@@ -88,6 +88,7 @@ class Invoice:
     created_at: str
     expires_at: str
     deposit_tx_hash: str | None = None
+    fee_verification: dict | None = None
     history: list = field(default_factory=list)
 
     def payment_instructions(self) -> dict:
@@ -236,4 +237,9 @@ def create_invoice(client: RelayClient, config: Config, store: InvoiceStore, *,
         expires_at=(now + timedelta(hours=EXPIRY_HOURS)).isoformat(),
     )
     store.save(invoice)
+    from .ledger import append_event
+    append_event(store.dir, "invoice_created", invoice_id=invoice.invoice_id,
+                 job_ref=invoice.job_ref, seller_id=invoice.seller_id,
+                 amount_usdc=invoice.amount_usdc,
+                 relay_request_id=invoice.relay_request_id)
     return invoice

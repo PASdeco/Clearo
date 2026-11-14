@@ -53,6 +53,21 @@ The settlement service itself, in Python (standard library only):
   same transition rules. Invoices that pass their 24 hour expiry unpaid are
   closed as expired by the watcher.
 
+## Fee verification and the ledger (`clearo/verification.py`, `clearo/ledger.py`)
+
+- `python -m clearo.service verify --id CLR-...` checks one final invoice's
+  app fee against Relay's record on `GET /requests/v3`: quoted against
+  actual, compared as exact decimals. Outcomes: match, not_collected (a
+  quoted fee at or under $0.025 that Relay did not collect; informational),
+  mismatch (flagged in the ledger the same day), unavailable (no Relay
+  record yet; nothing is claimed).
+- `python -m clearo.service reconcile` verifies every final invoice and
+  totals the accrual book: the sum of actual fees across verified records,
+  the figure a Relay fee balance must agree with before any claim.
+- Every real event (invoice created, status change, fee verified, fee
+  mismatch) is appended to `settlement-ledger.jsonl` in the data directory.
+  The ledger is append-only and is the book published numbers must match.
+
 Run it with `pip install .` from this folder (provides the `clearo`
 command), or directly with `PYTHONPATH=. python -m clearo.service ...`.
 

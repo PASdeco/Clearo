@@ -43,6 +43,9 @@ def poll_invoice(client: RelayClient, store: InvoiceStore, invoice) -> dict:
         invoice.status = new_status
         invoice.history.append({"from": previous, "to": new_status, "source": "poll"})
         store.save(invoice)
+        from .ledger import append_event
+        append_event(store.dir, "status_change", invoice_id=invoice.invoice_id,
+                     **{"from": previous, "to": new_status, "source": "poll"})
         return {"invoice_id": invoice.invoice_id, "status": new_status, "changed": True}
     return {"invoice_id": invoice.invoice_id, "status": invoice.status, "changed": False}
 
