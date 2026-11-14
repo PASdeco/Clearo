@@ -58,6 +58,10 @@ class RelayClient:
     def get_chains(self) -> list:
         return self._call("GET", "/chains").get("chains", [])
 
+    def get_intent_status(self, request_id: str) -> dict:
+        """Current status of one request: GET /intents/status/v3."""
+        return self._call("GET", f"/intents/status/v3?requestId={request_id}")
+
     def create_quote(self, *, user: str, recipient: str, origin_chain_id: int,
                      destination_chain_id: int, origin_currency: str,
                      destination_currency: str, amount: str, fee_recipient: str,

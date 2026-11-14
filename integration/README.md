@@ -32,6 +32,26 @@ The settlement service itself, in Python (standard library only):
     payer warnings (wrong token, one-time address, blocked platforms).
 
 - `clearo/invoices.py` is the invoice engine described above.
+- `python -m clearo.service watch` polls Relay once for every open invoice
+  and applies any status change. `python -m clearo.service serve --port 8080`
+  runs the HTTP surface: `POST /webhooks/relay` for Relay webhooks,
+  `GET /invoices/<id>` for an invoice's status and instructions, and
+  `GET /health`.
+
+## Watching settlements (`clearo/status.py`, `clearo/webhooks.py`, `clearo/watcher.py`)
+
+- Relay statuses: waiting, depositing, pending, submitted, success,
+  failure, refund. Only success and refund are final. Failure is not final:
+  the invoice stays open and watched. Status never moves backwards and a
+  final status is never overwritten.
+- Webhooks are verified with HMAC-SHA256 over "<timestamp>.<body>" against
+  every active App key (key rotation safe) before they are believed.
+  Unsigned or tampered deliveries are rejected with 401.
+- Events are matched to invoices by deposit address first and request ID
+  second, because Relay may regenerate the request ID that owns a fill.
+- Polling (`GET /intents/status/v3`) runs as backup to webhooks, with the
+  same transition rules. Invoices that pass their 24 hour expiry unpaid are
+  closed as expired by the watcher.
 
 Run it with `pip install .` from this folder (provides the `clearo`
 command), or directly with `PYTHONPATH=. python -m clearo.service ...`.

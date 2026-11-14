@@ -67,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
     create_p.add_argument("--payer-address")
     show_p = inv_sub.add_parser("show", help="show an invoice's payment instructions")
     show_p.add_argument("--id", required=True)
+    watch_p = sub.add_parser("watch", help="poll Relay once for every open invoice")
+    sub.add_parser("serve", help="run the webhook and status HTTP server").add_argument(
+        "--port", type=int, default=8080)
     args = parser.parse_args(argv)
 
     try:
@@ -77,6 +80,18 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=config.log_level,
                         format="%(asctime)s %(levelname)s clearo %(message)s")
     client = build_client(config)
+
+    if args.command == "serve":
+        from .invoices import InvoiceStore
+        from .server import serve
+        serve(InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data")), args.port)
+        return 0
+    if args.command == "watch":
+        from .invoices import InvoiceStore
+        from .watcher import poll_all
+        results = poll_all(client, InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data")))
+        print(json.dumps(results, indent=2))
+        return 0
 
     try:
         if args.command == "health":

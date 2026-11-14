@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 import secrets
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -87,6 +87,8 @@ class Invoice:
     status: str                 # waiting on creation; lifecycle in spec section 5
     created_at: str
     expires_at: str
+    deposit_tx_hash: str | None = None
+    history: list = field(default_factory=list)
 
     def payment_instructions(self) -> dict:
         """Machine-readable instructions. A buyer agent must never have to
