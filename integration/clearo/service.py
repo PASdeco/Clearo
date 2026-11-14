@@ -68,6 +68,15 @@ def main(argv: list[str] | None = None) -> int:
     show_p = inv_sub.add_parser("show", help="show an invoice's payment instructions")
     show_p.add_argument("--id", required=True)
     watch_p = sub.add_parser("watch", help="poll Relay once for every open invoice")
+    seller_p = sub.add_parser("seller", help="the plugged-in seller's commands")
+    seller_sub = seller_p.add_subparsers(dest="seller_command", required=True)
+    s_inv = seller_sub.add_parser("invoice", help="issue an invoice for an agreed job")
+    s_inv.add_argument("--job-ref", required=True)
+    s_inv.add_argument("--amount", required=True)
+    s_inv.add_argument("--buyer-refund-address", required=True)
+    s_inv.add_argument("--pay-from-chain", type=int, required=True)
+    s_inv.add_argument("--buyer-id")
+    seller_sub.add_parser("release-check", help="release delivery for final-paid invoices")
     verify_p = sub.add_parser("verify", help="verify one final invoice's fee on /requests/v3")
     verify_p.add_argument("--id", required=True)
     sub.add_parser("reconcile", help="verify every final invoice and total the accrual book")
@@ -88,6 +97,21 @@ def main(argv: list[str] | None = None) -> int:
         from .invoices import InvoiceStore
         from .server import serve
         serve(InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data")), args.port)
+        return 0
+    if args.command == "seller":
+        from .invoices import InvoiceStore
+        from .seller import SellerBridge
+        store = InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data"))
+        bridge = SellerBridge.from_env()
+        if args.seller_command == "invoice":
+            invoice = bridge.on_job_agreed(
+                client, config, store, job_ref=args.job_ref, amount_usdc=args.amount,
+                buyer_refund_address=args.buyer_refund_address,
+                pay_from_chain_id=args.pay_from_chain, buyer_id=args.buyer_id)
+            print(invoice.instructions_text())
+            return 0
+        released = bridge.release_due(store)
+        print(json.dumps({"released": released}, indent=2))
         return 0
     if args.command == "verify":
         from .invoices import InvoiceStore

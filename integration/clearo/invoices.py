@@ -89,6 +89,7 @@ class Invoice:
     expires_at: str
     deposit_tx_hash: str | None = None
     fee_verification: dict | None = None
+    delivery_released: bool = False
     history: list = field(default_factory=list)
 
     def payment_instructions(self) -> dict:

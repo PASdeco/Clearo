@@ -68,6 +68,24 @@ The settlement service itself, in Python (standard library only):
   mismatch) is appended to `settlement-ledger.jsonl` in the data directory.
   The ledger is append-only and is the book published numbers must match.
 
+## Plugging in a seller (`clearo/seller.py`)
+
+A seller plugs in with two automatic touches: when it agrees a job it
+calls the bridge and Clearo issues the invoice; when Clearo reports the
+payment final, the bridge writes a delivery release for that job, exactly
+once, and only on success. A refunded or unpaid invoice releases nothing.
+Buyers never plug in: they receive payment instructions and pay from their
+own wallet.
+
+- `python -m clearo.service seller invoice --job-ref ... --amount 0.50 --buyer-refund-address 0x... --pay-from-chain 56`
+  issues an invoice under the seller profile (`CLEARO_SELLER_ID`,
+  `CLEARO_SELLER_NAME`, `CLEARO_SELLER_WALLET`, `CLEARO_SELLER_RECEIVE_CHAIN`).
+- `python -m clearo.service seller release-check` releases delivery for
+  every final-paid invoice of that seller. The webhook server also runs a
+  release pass after each verified event.
+- Releases are written to `deliveries.jsonl` in the data directory for the
+  seller's own runner to act on, and recorded in the settlement ledger.
+
 Run it with `pip install .` from this folder (provides the `clearo`
 command), or directly with `PYTHONPATH=. python -m clearo.service ...`.
 

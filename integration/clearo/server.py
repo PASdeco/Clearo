@@ -66,7 +66,13 @@ def make_handler(store: InvoiceStore):
                 event = json.loads(body.decode("utf-8"))
             except (ValueError, UnicodeDecodeError):
                 return self._send(400, {"error": "invalid JSON"})
-            return self._send(200, apply_event(store, event))
+            result = apply_event(store, event)
+            try:
+                from .seller import SellerBridge
+                SellerBridge.from_env().release_due(store)
+            except Exception:
+                pass  # delivery release also runs on the watch pass; never fail a webhook on it
+            return self._send(200, result)
 
     return Handler
 
