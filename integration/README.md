@@ -31,7 +31,13 @@ The settlement service itself, in Python (standard library only):
     exact chain, exact amount to send, the deposit address, expiry, and the
     payer warnings (wrong token, one-time address, blocked platforms).
 
-- `clearo/invoices.py` is the invoice engine described above.
+- `clearo/invoices.py` is the invoice engine described above. Invoices
+  carry an amount mode: `exact_output` (the seller receives the exact
+  invoice amount; the buyer sends the computed input) by default, or
+  `exact_input` (the buyer sends the exact invoice amount; the seller
+  receives the market fill, quoted as an estimate). Some routes only
+  support deposit addresses in one mode, so the mode is chosen per route
+  and printed on the invoice.
 - `examples/seller_quickstart.py` is the seller integration as one
   copyable file (plain HTTP, no Clearo internals), and `SELLER_GUIDE.md`
   is the seller-facing guide. Sellers run both themselves.

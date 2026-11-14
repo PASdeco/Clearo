@@ -57,7 +57,8 @@ class SellerBridge:
 
     def on_job_agreed(self, client: RelayClient, config: Config, store: InvoiceStore, *,
                       job_ref: str, amount_usdc: str, buyer_refund_address: str,
-                      pay_from_chain_id: int, buyer_id: str | None = None) -> Invoice:
+                      pay_from_chain_id: int, buyer_id: str | None = None,
+                      amount_mode: str = "exact_output") -> Invoice:
         """Job agreed -> invoice issued, ready to hand to the buyer."""
         if not self.profile.wallet:
             raise ValueError("CLEARO_SELLER_WALLET is not set for this seller profile")
@@ -68,7 +69,8 @@ class SellerBridge:
             receive_chain_id=self.profile.receive_chain_id,
             amount_usdc=amount_usdc, job_ref=job_ref,
             refund_address=buyer_refund_address,
-            pay_from_chain_id=pay_from_chain_id, buyer_id=buyer_id)
+            pay_from_chain_id=pay_from_chain_id, buyer_id=buyer_id,
+            amount_mode=amount_mode)
 
     def release_due(self, store: InvoiceStore) -> list[dict]:
         """Release delivery for this seller's final-paid invoices."""

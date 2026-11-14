@@ -90,6 +90,8 @@ class Invoice:
     deposit_tx_hash: str | None = None
     fee_verification: dict | None = None
     delivery_released: bool = False
+    amount_mode: str = "exact_output"   # or "exact_input" (see create_invoice)
+    expected_receive_usdc: str | None = None  # exact_input only: quoted estimate
     history: list = field(default_factory=list)
 
     def payment_instructions(self) -> dict:
@@ -111,7 +113,9 @@ class Invoice:
                 "deposit_address": self.deposit_address,
                 "deposit_address_type": "strict, one-time use",
             },
-            "seller_receives_usdc": self.amount_usdc,
+            "amount_mode": self.amount_mode,
+            "seller_receives_usdc": self.amount_usdc if self.amount_mode == "exact_output" else None,
+            "seller_expected_usdc": self.expected_receive_usdc if self.amount_mode == "exact_input" else None,
             "clearo_fee_bps": self.fee_bps,
             "clearo_fee_usdc_quoted": self.quoted_app_fee_usdc,
             "refund_address_on_record": self.refund_address,
@@ -143,8 +147,12 @@ class Invoice:
             f"  Token contract: {pay['token_contract']}",
             f"  On chain: {pay['chain']} (chain ID {pay['chain_id']})",
             f"  To this one-time deposit address: {pay['deposit_address']}",
-            f"  The seller receives {self.amount_usdc} USDC. Clearo's fee is "
-            f"{self.fee_bps} bps, quoted at {self.quoted_app_fee_usdc} USDC.",
+            (f"  The seller receives {self.amount_usdc} USDC. Clearo's fee is "
+             f"{self.fee_bps} bps, quoted at {self.quoted_app_fee_usdc} USDC."
+             if self.amount_mode == "exact_output" else
+             f"  The seller receives about {self.expected_receive_usdc} USDC "
+             f"(market fill on a send-exact invoice). Clearo's fee is "
+             f"{self.fee_bps} bps, quoted at {self.quoted_app_fee_usdc} USDC."),
             f"  This invoice expires at {self.expires_at}.",
             "",
             "Warnings:",
@@ -185,7 +193,8 @@ def create_invoice(client: RelayClient, config: Config, store: InvoiceStore, *,
                    receive_chain_id: int, amount_usdc: str, job_ref: str,
                    refund_address: str, pay_from_chain_id: int,
                    buyer_id: str | None = None,
-                   payer_address: str | None = None) -> Invoice:
+                   payer_address: str | None = None,
+                   amount_mode: str = "exact_output") -> Invoice:
     """Create an invoice and its Relay deposit-address quote.
 
     The refund address is required and validated before Relay is called:
@@ -205,6 +214,14 @@ def create_invoice(client: RelayClient, config: Config, store: InvoiceStore, *,
     recovery = config.effective_recovery_address
 
     now = datetime.now(timezone.utc)
+    if amount_mode not in ("exact_output", "exact_input"):
+        raise InvoiceError(f"unknown amount_mode {amount_mode!r}")
+    # exact_output: the seller receives the exact invoice amount and the
+    # buyer sends the computed input. exact_input: the buyer sends the
+    # exact invoice amount and the seller receives the market fill. Some
+    # routes (for example Base to BNB Chain USDC) only support deposit
+    # addresses in exact_input mode; Relay rejects the other with a
+    # "major tokens" error. The mode is printed on the invoice either way.
     quote = client.create_quote(
         user=payer_address or refund_address,
         recipient=seller_wallet,
@@ -214,7 +231,9 @@ def create_invoice(client: RelayClient, config: Config, store: InvoiceStore, *,
         destination_currency=USDC[receive_chain_id],
         amount=to_base_units(amount_usdc),
         fee_recipient=config.fee_recipient, fee_bps=config.fee_bps,
-        use_deposit_address=True, trade_type="EXACT_OUTPUT", strict=True,
+        use_deposit_address=True,
+        trade_type="EXACT_OUTPUT" if amount_mode == "exact_output" else "EXACT_INPUT",
+        strict=True,
         refund_to=refund_address, recovery_address=recovery)
     deposit_address = extract_deposit_address(quote)
     if not deposit_address:
@@ -229,7 +248,11 @@ def create_invoice(client: RelayClient, config: Config, store: InvoiceStore, *,
         quoted_app_fee_usdc=(fees.get("app") or {}).get("amountFormatted"),
         quoted_relayer_fee_usdc=(fees.get("relayer") or {}).get("amountFormatted"),
         pay_from_chain_id=pay_from_chain_id,
-        amount_to_send_usdc=(details.get("currencyIn") or {}).get("amountFormatted"),
+        amount_to_send_usdc=(amount_usdc if amount_mode == "exact_input"
+                             else (details.get("currencyIn") or {}).get("amountFormatted")),
+        amount_mode=amount_mode,
+        expected_receive_usdc=((details.get("currencyOut") or {}).get("amountFormatted")
+                               if amount_mode == "exact_input" else None),
         deposit_address=deposit_address,
         refund_address=refund_address, buyer_id=buyer_id,
         relay_request_id=quote.get("requestId"),
