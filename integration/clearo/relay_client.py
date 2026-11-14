@@ -62,7 +62,9 @@ class RelayClient:
                      destination_chain_id: int, origin_currency: str,
                      destination_currency: str, amount: str, fee_recipient: str,
                      fee_bps: int, use_deposit_address: bool = False,
-                     trade_type: str = "EXACT_INPUT") -> dict:
+                     trade_type: str = "EXACT_INPUT", strict: bool = False,
+                     refund_to: str | None = None,
+                     recovery_address: str | None = None) -> dict:
         body = {
             "user": user,
             "recipient": recipient,
@@ -75,4 +77,10 @@ class RelayClient:
             "appFees": [{"recipient": fee_recipient, "fee": str(fee_bps)}],
             "useDepositAddress": use_deposit_address,
         }
+        if use_deposit_address:
+            body["strict"] = strict
+            if refund_to:
+                body["refundTo"] = refund_to
+            if recovery_address:
+                body["recoveryAddress"] = recovery_address
         return self._call("POST", "/quote/v2", body)

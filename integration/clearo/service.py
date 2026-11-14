@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 
 from . import __version__
@@ -50,6 +51,22 @@ def main(argv: list[str] | None = None) -> int:
     quote_p.add_argument("--recipient", required=True)
     quote_p.add_argument("--from-chain", type=int, default=8453)
     quote_p.add_argument("--to-chain", type=int, default=42161)
+    inv = sub.add_parser("invoice", help="invoice engine commands")
+    inv_sub = inv.add_subparsers(dest="invoice_command", required=True)
+    create_p = inv_sub.add_parser("create", help="create an invoice and its deposit address")
+    create_p.add_argument("--seller-id", required=True)
+    create_p.add_argument("--seller-name", required=True)
+    create_p.add_argument("--seller-wallet", required=True)
+    create_p.add_argument("--receive-chain", type=int, required=True)
+    create_p.add_argument("--amount", required=True, help="exact USDC the seller receives")
+    create_p.add_argument("--job-ref", required=True)
+    create_p.add_argument("--refund-address", required=True,
+                          help="buyer refund address on the origin chain (required)")
+    create_p.add_argument("--pay-from-chain", type=int, required=True)
+    create_p.add_argument("--buyer-id")
+    create_p.add_argument("--payer-address")
+    show_p = inv_sub.add_parser("show", help="show an invoice's payment instructions")
+    show_p.add_argument("--id", required=True)
     args = parser.parse_args(argv)
 
     try:
@@ -86,6 +103,27 @@ def main(argv: list[str] | None = None) -> int:
                 "relayer_fee_usdc": (fees.get("relayer") or {}).get("amountFormatted"),
                 "amount_out_usdc": (quote.get("details", {}).get("currencyOut") or {}).get("amountFormatted"),
             }, indent=2))
+            return 0
+        if args.command == "invoice":
+            from .invoices import InvoiceStore, create_invoice, InvoiceError
+            store = InvoiceStore(os.environ.get("CLEARO_DATA_DIR", "data"))
+            if args.invoice_command == "create":
+                invoice = create_invoice(
+                    client, config, store,
+                    seller_id=args.seller_id, seller_name=args.seller_name,
+                    seller_wallet=args.seller_wallet,
+                    receive_chain_id=args.receive_chain, amount_usdc=args.amount,
+                    job_ref=args.job_ref, refund_address=args.refund_address,
+                    pay_from_chain_id=args.pay_from_chain, buyer_id=args.buyer_id,
+                    payer_address=args.payer_address)
+                print(invoice.instructions_text())
+                print()
+                print(json.dumps({"invoice_id": invoice.invoice_id,
+                                  "status": invoice.status,
+                                  "relay_request_id": invoice.relay_request_id}, indent=2))
+                return 0
+            invoice = store.get(args.id)
+            print(json.dumps(invoice.payment_instructions(), indent=2))
             return 0
     except (ConfigError, RelayError, ValueError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)

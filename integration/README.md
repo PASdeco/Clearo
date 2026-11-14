@@ -20,6 +20,18 @@ The settlement service itself, in Python (standard library only):
   - `python -m clearo.service quote --amount 0.50 --user 0x... --recipient 0x...`
     pulls a live quote through the service's own client. A quote spends
     nothing and signs nothing.
+  - `python -m clearo.service invoice create --seller-id ... --seller-name ... --seller-wallet 0x... --receive-chain 8453 --amount 0.50 --job-ref ... --refund-address 0x... --pay-from-chain 56`
+    creates an invoice: Clearo requests a strict, one-time deposit address
+    from Relay (exact output, refund and recovery addresses set), stores the
+    invoice under `CLEARO_DATA_DIR`, and prints the payment instructions.
+    The buyer's refund address is required; without it no instructions are
+    issued. Sellers receive on Base or BNB Chain at launch.
+  - `python -m clearo.service invoice show --id CLR-...` prints an
+    invoice's machine-readable payment instructions: exact token contract,
+    exact chain, exact amount to send, the deposit address, expiry, and the
+    payer warnings (wrong token, one-time address, blocked platforms).
+
+- `clearo/invoices.py` is the invoice engine described above.
 
 Run it with `pip install .` from this folder (provides the `clearo`
 command), or directly with `PYTHONPATH=. python -m clearo.service ...`.

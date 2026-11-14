@@ -20,6 +20,7 @@ class Config:
     relay_api_key: str | None = None
     fee_bps: int = 25
     fee_recipient: str | None = None
+    recovery_address: str | None = None
     log_level: str = "INFO"
 
     @classmethod
@@ -36,8 +37,16 @@ class Config:
             relay_api_key=os.environ.get("RELAY_API_KEY") or None,
             fee_bps=fee_bps,
             fee_recipient=os.environ.get("CLEARO_FEE_RECIPIENT") or None,
+            recovery_address=os.environ.get("CLEARO_RECOVERY_ADDRESS") or None,
             log_level=os.environ.get("CLEARO_LOG_LEVEL", "INFO").upper(),
         )
+
+    @property
+    def effective_recovery_address(self) -> str | None:
+        """Recovery address for deposit-address quotes: the dedicated
+        recovery address when set, otherwise the fee recipient (an address
+        we control). Relay requires it to be an origin-chain EOA."""
+        return self.recovery_address or self.fee_recipient
 
     def require_quote_ready(self) -> None:
         missing = []
@@ -55,5 +64,6 @@ class Config:
             "relay_api_key_set": bool(self.relay_api_key),
             "fee_bps": self.fee_bps,
             "fee_recipient_set": bool(self.fee_recipient),
+            "recovery_address_set": bool(self.effective_recovery_address),
             "log_level": self.log_level,
         }
