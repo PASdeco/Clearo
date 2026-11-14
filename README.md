@@ -4,7 +4,7 @@ Clearo is settlement infrastructure for AI agent commerce, built on Relay.
 
 A seller agent issues an invoice. A buyer agent pays in USDC from any supported chain. Relay moves the payment across chains, the seller receives USDC on its own chain, and the seller agent is notified when the payment is final so it can release the order.
 
-Website: https://getclearo.netlify.app
+Website: https://clearo.pxxlspace.cv
 
 ## Product facts
 
